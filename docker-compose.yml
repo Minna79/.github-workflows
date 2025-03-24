@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  llm-inference:
+    image: minabon79/llm-inference-image  # Replace with your actual image name
+    ports:
+      - "8080:5000"  # Map container's port 5000 to host's port 8080
+    environment:
+      - METRICS_LOG_FILE=/app/inside_compose_inference_metrics.csv  # Log file inside the container
+    volumes:
+      - ./compose_inference_metrics.csv:/app/inside_compose_inference_metrics.csv  # Map the file correctly
+    restart: always  # Restart container on failure
