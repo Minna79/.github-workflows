@@ -3,14 +3,14 @@ name: CI Pipeline
 on:
   push:
     branches:
-      - main  # Trigger the pipeline when code is pushed to the main branch
+      - main  # Trigger the pipeline when code is pushed to main
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout the code
+      # Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -19,7 +19,7 @@ jobs:
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
       # Build the Docker image
       - name: Build Docker image
@@ -33,7 +33,12 @@ jobs:
       - name: Run Docker container
         run: |
           docker run -d --name llm-inference-container -p 5000:5000 minabon79/llm-inference-image
-          sleep 10  # Wait for the container to start
+
+      # Wait for the container to be healthy (adjust as needed)
+      - name: Wait for container readiness
+        run: |
+          sleep 5  # Give some time for the app to start
+          docker ps -a  # Check running containers
 
       # Run the latency test script
       - name: Run latency test
@@ -43,9 +48,18 @@ jobs:
 
       # Monitor Docker stats
       - name: Monitor Docker stats
-        run: |
-          docker stats llm-inference-container --no-stream
+        run: docker stats --no-stream
 
-      # Connect to the container shell (optional)
-      - name: Connect to container shell
-        run: docker exec -it llm-inference-container /bin/bash
+      # Check if the container has the expected files
+      - name: Verify files inside container
+        run: docker exec llm-inference-container ls /app
+
+      # Copy CSV file from container to host machine
+      - name: Copy CSV file from container
+        run: docker cp llm-inference-container:/app/docker_system_inference_metrics.csv .
+
+      # Stop and remove the container
+      - name: Clean up container
+        run: |
+          docker stop llm-inference-container
+          docker rm llm-inference-container
